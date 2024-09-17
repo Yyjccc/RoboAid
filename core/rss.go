@@ -8,6 +8,7 @@ import (
 
 var log = DefaultLogger
 
+// RssSource rss订阅源
 type RssSource struct {
 	Name        string
 	Link        string
@@ -39,4 +40,8 @@ func T() {
 		fmt.Printf("\n文章标题: %s\n", item.Title)
 		fmt.Printf("链接: %s\n", item.Link)
 	}
+}
+
+func (r *RssSource) Get() {
+
 }

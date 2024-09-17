@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	"github.com/go-resty/resty/v2"
 	"net"
 	"net/http"
