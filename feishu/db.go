@@ -13,7 +13,7 @@ var fsDb *FeiShuDB
 // 私有RSS订阅
 type PrivateRss struct {
 	ID         string
-	SourceID   string
+	SourceID   int64
 	OpenID     string
 	CreateDate string
 }
@@ -173,4 +173,45 @@ func (f *FeiShuDB) GetAllPrivateRss(id int64) ([]*PrivateRss, error) {
 	}
 
 	return rssList, nil
+}
+
+// 根据id
+func (f *FeiShuDB) GetAllPrivateRssByUserID(openId string) ([]*core.RssSource, error) {
+	// 查询语句
+	query := `SELECT id, source_id, open_id, create_date FROM private_rss WHERE open_od = ?`
+
+	// 执行查询
+	rows, err := f.Db.Query(query, openId)
+	if err != nil {
+		log.Error("Failed to retrieve private RSS records:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	// 初始化结果切片
+	var rssList []*PrivateRss
+	// 遍历结果集
+	for rows.Next() {
+		var rss *PrivateRss
+		err := rows.Scan(&rss.ID, &rss.SourceID, &rss.OpenID, &rss.CreateDate)
+		if err != nil {
+			log.Error("Failed to scan RSS record:", err)
+			return nil, err
+		}
+		// 添加到结果切片
+		rssList = append(rssList, rss)
+	}
+
+	// 检查 rows 是否有任何错误
+	if err := rows.Err(); err != nil {
+		log.Error("Error occurred during row iteration:", err)
+		return nil, err
+	}
+	var ressult []*core.RssSource
+	for _, rss := range rssList {
+		source := core.RssDb.GetRssSource(rss.SourceID)
+		if source != nil {
+			ressult = append(ressult, source)
+		}
+	}
+	return ressult, nil
 }

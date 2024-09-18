@@ -168,3 +168,28 @@ func (r *RssDB) GetAllRssSource() ([]*RssSource, error) {
 	}
 	return rssSources, nil
 }
+
+func (r *RssDB) GetRssSource(id int64) *RssSource {
+	query := `SELECT id, name, description, link, collect_count, collect_date, update_time, creator  FROM rss_source where id=? LIMIT 1`
+	rows, err := r.Db.Query(query, id)
+	if err != nil {
+		log.Error(err)
+		return nil
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var source RssSource
+		err := rows.Scan(&source.ID, &source.Name, &source.Description, &source.Link, &source.CollectCount, &source.CollectDate, &source.UpdateTime, &source.Creator)
+		if err != nil {
+			log.Error(err)
+			return nil
+		}
+		return &source
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Error(err)
+		return nil
+	}
+	return nil
+}

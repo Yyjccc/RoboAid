@@ -142,6 +142,26 @@ func SendCard(content, openId string) error {
 	return nil
 }
 
+// 发送卡片消息
+func ReplyCard(content, msgId string) error {
+	replyReq := larkim.NewReplyMessageReqBuilder().Body(
+		larkim.NewReplyMessageReqBodyBuilder().
+			MsgType("interactive").
+			Content(content).
+			Build()).
+		MessageId(msgId).Build()
+	replyResp, _ := client.Im.Message.Reply(ctx, replyReq)
+	if !replyResp.Success() {
+		log.Errorf("client.Im.Message.Create failed, code: %d, msg: %s, log_id: %s\n",
+			replyResp.Code, replyResp.Msg, replyResp.RequestId())
+		log.Error("飞书bot", "消息发送失败")
+		return replyResp.CodeError
+	} else {
+		log.Debugf("bot 成功回复消息卡片,openId:%s", msgId)
+	}
+	return nil
+}
+
 // 通过配置的群聊获取用户列表
 func GetUserList() []string {
 	req := larkim.NewGetChatMembersReqBuilder().ChatId(cfg.GroupID).Build()

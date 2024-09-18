@@ -21,8 +21,8 @@ func ServerStart() {
 	handler := dispatcher.NewEventDispatcher(cfg.VerifyToken, "").
 		//接收到消息的处理
 		OnP2MessageReceiveV1(func(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
-			id := *event.Event.Sender.SenderId.OpenId
-			return SendCard(NewTipCard("暂不支持聊天"), id)
+			msgId := *event.Event.Message.MessageId
+			return ReplyCard(NewTipCard("暂不支持聊天"), msgId)
 		}).
 		OnP2BotMenuV6(func(ctx context.Context, event *larkapplication.P2BotMenuV6) error {
 			// 菜单类型
@@ -67,8 +67,25 @@ func ServerStart() {
 					log.Error(err)
 				}
 				return SendCard(NewTipCard("**成功关闭**订阅"), openID)
-			case "":
-
+			case "event.rss.list":
+				//rss订阅列表
+				source, err := core.RssDb.GetAllRssSource()
+				if err != nil {
+					return SendCard(NewErrCard(err), openID)
+				}
+				var public_list = make([]*core.RssSource, 0)
+				for _, v := range source {
+					if v.Public == 1 {
+						public_list = append(public_list, v)
+					}
+				}
+				private_list, err := fsDb.GetAllPrivateRssByUserID(openID)
+				if err != nil {
+					return SendCard(NewErrCard(err), openID)
+				}
+				return SendCard(NewRssListCard(public_list, private_list), openID)
+			case "event.rss.add":
+				return SendCard(NewRssAddCard(), openID)
 			}
 			return nil
 		}).
