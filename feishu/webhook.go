@@ -9,6 +9,7 @@ import (
 	"github.com/larksuite/oapi-sdk-go/v3/core/httpserverext"
 	larkevent "github.com/larksuite/oapi-sdk-go/v3/event"
 	"github.com/larksuite/oapi-sdk-go/v3/event/dispatcher"
+	"github.com/larksuite/oapi-sdk-go/v3/event/dispatcher/callback"
 	larkapplication "github.com/larksuite/oapi-sdk-go/v3/service/application/v6"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"net/http"
@@ -86,6 +87,7 @@ func ServerStart() {
 				if err != nil {
 					return SendCard(NewErrCard(err), openID)
 				}
+				log.Infof("public RSS count: %d;private RSS count:%d", len(public_list), len(private_list))
 				return SendCard(NewRssListCard(public_list, private_list), openID)
 			case "event.rss.add":
 				return SendCard(NewRssAddCard(), openID)
@@ -94,7 +96,7 @@ func ServerStart() {
 		}).
 		//卡片回传
 		OnCustomizedEvent("card.action.trigger", func(ctx context.Context, event *larkevent.EventReq) error {
-			var callback AddRSSCallBack
+			var callback CallBack
 			err := json.Unmarshal(event.Body, &callback)
 			if err != nil {
 				log.Error(err)
@@ -102,7 +104,7 @@ func ServerStart() {
 			}
 			openID := *callback.Event.Operator.OpenId
 			form := callback.Event.Action.FormValue
-			callType := callback.Event.Action.Value
+			callType := callback.Event.Action.Value.OpCode
 			switch callType {
 			case "add":
 				// 将字符串转换为整数
@@ -122,13 +124,13 @@ func ServerStart() {
 					CollectDate:  time.Now().Format(date_format),
 					UpdateTime:   time.Now().Format(date_format),
 				}
-				log.Debug(source)
 				//添加订阅源
 				if source.Public == 1 {
 					//推送申请卡片
-					apply := NewApply(source, openID, form.Note, true)
+					apply := NewApply(source, openID, callback.Event.Context.OpenMessageID, form.Note, true)
+					log.Debug(apply)
 					apply_list[name] = apply
-					//return SendCard()
+					return SendCard(NewApplyCard(apply), cfg.Owner)
 				} else {
 					//私有的直接存入
 					err := core.RssDb.InsertRssSource(source)
@@ -138,8 +140,45 @@ func ServerStart() {
 					}
 					return SendCard(NewTipCard("订阅成功"), openID)
 				}
-			case "apply":
+			case "pass":
 				//公共RSS申请通过
+				log.Debugf("申请等待队列：%v", apply_list)
+				apply := GetApply(callback.Event.Action.Value.ApplyId)
+				if apply == nil {
+					return SendCard(NewErrCard(fmt.Errorf("申请流程错误,申请对象为空!")), openID)
+				}
+				//剔除等待队列
+				delete(apply_list, apply.Source.Name)
+				if apply.add {
+					//添加操作
+					err := core.RssDb.InsertRssSource(apply.Source)
+					if err != nil {
+						log.Error(err)
+						return SendCard(NewErrCard(fmt.Errorf("订阅错误,%s", err)), openID)
+					}
+					//向申请者发送审核通过
+					//撤回原来的卡片
+					SendCard(NewTipCard("审核已通过,订阅成功："+apply.Source.Name), apply.UserId)
+					//向审核者发送提示
+					return SendCard(NewTipCard("审核已生效,"+apply.Source.Name), openID)
+				} else {
+					//删除操作
+					err := core.RssDb.DeleteRssSource(apply.Source.Name)
+					if err != nil {
+						return SendCard(NewErrCard(fmt.Errorf("取消订阅错误,%s", err)), openID)
+					}
+					SendCard(NewTipCard("审核已通过,取消订阅成功："+apply.Source.Name), apply.UserId)
+					//向审核者发送提示
+					return SendCard(NewTipCard("审核已生效,"+apply.Source.Name), openID)
+				}
+			case "reject":
+				apply := GetApply(callback.Event.Action.Value.ApplyId)
+				if apply == nil {
+					return SendCard(NewErrCard(fmt.Errorf("申请流程错误,申请对象为空!")), openID)
+				}
+				//剔除等待队列
+				delete(apply_list, apply.Source.Name)
+				return SendCard(NewTipCard("审核未通过！name:"+apply.Source.Name), apply.UserId)
 			}
 			return nil
 		})
@@ -210,18 +249,19 @@ func Do(rss *core.RssSource, t time.Time) {
 
 }
 
-type AddRSSCallBack struct {
+type CallBack struct {
 	*larkevent.EventV2Base // 事件基础数据
 	Event                  struct {
-		Operator larkim.UserId `json:"operator"`
-		Token    string        `json:"token"`
-		Action   *ActionForm   `json:"action"`
+		Operator larkim.UserId    `json:"operator"`
+		Token    string           `json:"token"`
+		Action   *ActionForm      `json:"action"`
+		Context  callback.Context `json:"context"`
 	} `json:"event"`
 }
 type ActionForm struct {
-	Value     string `json:"value"`
-	Tag       string `json:"tag"`
-	Timezone  string `json:"timezone"`
+	Value     CallbackEvent `json:"value"`
+	Tag       string        `json:"tag"`
+	Timezone  string        `json:"timezone"`
 	FormValue struct {
 		core.RssSource
 		Note string `json:"note"`
@@ -230,6 +270,20 @@ type ActionForm struct {
 	Name string `json:"name"`
 }
 
+type CallbackEvent struct {
+	OpCode  string `json:"opcode"`
+	ApplyId string `json:"apply_id"`
+}
+
 func queryByName(name string) bool {
 	return core.RssDb.HasRss(name)
+}
+
+func GetApply(id string) *Apply {
+	for _, apply := range apply_list {
+		if apply.Id == id {
+			return apply
+		}
+	}
+	return nil
 }

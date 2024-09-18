@@ -286,7 +286,7 @@ func (s *Sender) SendPrivateRecord(source *core.RssSource, record *core.RssRecor
 		return err
 	}
 	if len(rss) == 0 {
-		err := fmt.Errorf("not found private rss resouce user,%s", record.SourceID)
+		err := fmt.Errorf("not found private rss resouce user,%d", record.SourceID)
 		log.Error(err)
 		return err
 	}

@@ -68,26 +68,30 @@ type CardTemplate struct {
 }
 
 type Apply struct {
-	Id     string
-	Date   string
-	UserId string
-	Source *core.RssSource
-	add    bool
-	Note   string
+	Id        string
+	Date      string
+	UserId    string
+	Source    *core.RssSource
+	SrcCardId string
+	add       bool
+	Note      string
 }
 
-func NewApply(s *core.RssSource, openID, note string, add bool) *Apply {
+func NewApply(s *core.RssSource, openID, srcCardID, note string, add bool) *Apply {
 	// 生成 UUID
 	id := uuid.New()
 	// 取前10位字符作为ID
 	shortID := id.String()[:10]
+	log.Infof("create apply,id:%s", shortID)
+
 	return &Apply{
-		Id:     shortID,
-		Date:   time.Now().Format(date_format),
-		UserId: openID,
-		Source: s,
-		add:    add,
-		Note:   note,
+		Id:        shortID,
+		Date:      time.Now().Format(date_format),
+		UserId:    openID,
+		Source:    s,
+		SrcCardId: srcCardID,
+		add:       add,
+		Note:      note,
 	}
 }
 
@@ -133,7 +137,7 @@ func NewRssListCard(public, private []*core.RssSource) string {
 }
 
 // 申请卡片
-func NeaApplyCard(apply Apply) string {
+func NewApplyCard(apply *Apply) string {
 
 	source := apply.Source
 	var variables = make(map[string]interface{})

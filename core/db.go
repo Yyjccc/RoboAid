@@ -144,7 +144,7 @@ func (r *RssDB) DeleteRssSource(name string) error {
 // GetAllRssSource 查询所有 RSS 资源
 func (r *RssDB) GetAllRssSource() ([]*RssSource, error) {
 
-	query := `SELECT id, name, description, link, collect_count, collect_date, update_time, creator FROM rss_source`
+	query := `SELECT id, name, description, link, "public",collect_count, collect_date, update_time, creator FROM rss_source`
 	rows, err := r.Db.Query(query)
 	if err != nil {
 		log.Error(err)
@@ -154,7 +154,7 @@ func (r *RssDB) GetAllRssSource() ([]*RssSource, error) {
 	var rssSources []*RssSource
 	for rows.Next() {
 		var source RssSource
-		err := rows.Scan(&source.ID, &source.Name, &source.Description, &source.Link, &source.CollectCount, &source.CollectDate, &source.UpdateTime, &source.Creator)
+		err := rows.Scan(&source.ID, &source.Name, &source.Description, &source.Link, &source.Public, &source.CollectCount, &source.CollectDate, &source.UpdateTime, &source.Creator)
 		if err != nil {
 			log.Error(err)
 			return nil, err
@@ -170,7 +170,7 @@ func (r *RssDB) GetAllRssSource() ([]*RssSource, error) {
 }
 
 func (r *RssDB) GetRssSource(id int64) *RssSource {
-	query := `SELECT id, name, description, link, collect_count, collect_date, update_time, creator  FROM rss_source where id=? LIMIT 1`
+	query := `SELECT id, name, description, link,"public" collect_count, collect_date, update_time, creator  FROM rss_source where id=? LIMIT 1`
 	rows, err := r.Db.Query(query, id)
 	if err != nil {
 		log.Error(err)
@@ -179,7 +179,7 @@ func (r *RssDB) GetRssSource(id int64) *RssSource {
 	defer rows.Close()
 	for rows.Next() {
 		var source RssSource
-		err := rows.Scan(&source.ID, &source.Name, &source.Description, &source.Link, &source.CollectCount, &source.CollectDate, &source.UpdateTime, &source.Creator)
+		err := rows.Scan(&source.ID, &source.Name, &source.Description, &source.Link, &source.Public, &source.CollectCount, &source.CollectDate, &source.UpdateTime, &source.Creator)
 		if err != nil {
 			log.Error(err)
 			return nil
