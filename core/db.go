@@ -123,7 +123,7 @@ func (r *RssDB) GetRecordBySourceID(sourceID int64) ([]*RssRecord, error) {
 
 func (r *RssDB) InsertRssSource(source *RssSource) error {
 	// 插入数据的 SQL 语句
-	query := `INSERT INTO rss_source (name , description ,link,collect_count,collect_date,update_time,public,creator)VALUES (?,?,?, ?, ?, ?, ?)`
+	query := `INSERT INTO rss_source (name , description ,link,collect_count,collect_date,update_time,public,creator)VALUES (?,?,?, ?, ?, ?, ?,?)`
 	_, err := r.Db.Exec(query, source.Name, source.Description, source.Link, source.CollectCount, source.CollectDate, source.UpdateTime, source.Public, source.Creator)
 	if err != nil {
 		log.Error(err)
@@ -192,4 +192,18 @@ func (r *RssDB) GetRssSource(id int64) *RssSource {
 		return nil
 	}
 	return nil
+}
+
+func (r *RssDB) HasRss(name string) bool {
+	query := `SELECT COUNT(*)  FROM rss_source where name=?`
+	var count int
+	err := r.Db.QueryRow(query, name).Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false
+		}
+		log.Error(err)
+		return false
+	}
+	return count > 0
 }

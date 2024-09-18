@@ -21,7 +21,7 @@ type RssSource struct {
 	Link         string `json:"link"`
 	Description  string `json:"description"`
 	Creator      string `json:"user_id"`
-	Public       int    `json:"public"`
+	Public       int
 	CollectCount int
 	CollectDate  string
 	UpdateTime   string

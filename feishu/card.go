@@ -3,6 +3,8 @@ package feishu
 import (
 	"RoboAid/core"
 	"encoding/json"
+	"github.com/google/uuid"
+	"time"
 )
 
 // 提示卡片
@@ -72,6 +74,21 @@ type Apply struct {
 	Source *core.RssSource
 	add    bool
 	Note   string
+}
+
+func NewApply(s *core.RssSource, openID, note string, add bool) *Apply {
+	// 生成 UUID
+	id := uuid.New()
+	// 取前10位字符作为ID
+	shortID := id.String()[:10]
+	return &Apply{
+		Id:     shortID,
+		Date:   time.Now().Format(date_format),
+		UserId: openID,
+		Source: s,
+		add:    add,
+		Note:   note,
+	}
 }
 
 func NewRssAddCard() string {

@@ -4,6 +4,7 @@ import (
 	"RoboAid/core"
 	"context"
 	"encoding/json"
+	"fmt"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	"github.com/larksuite/oapi-sdk-go/v3/core/httpserverext"
 	larkevent "github.com/larksuite/oapi-sdk-go/v3/event"
@@ -16,6 +17,8 @@ import (
 )
 
 const date_format = "2006-01-02"
+
+var apply_list = make(map[string]*Apply)
 
 func ServerStart() {
 	handler := dispatcher.NewEventDispatcher(cfg.VerifyToken, "").
@@ -91,7 +94,7 @@ func ServerStart() {
 		}).
 		//卡片回传
 		OnCustomizedEvent("card.action.trigger", func(ctx context.Context, event *larkevent.EventReq) error {
-			var callback CallBack
+			var callback AddRSSCallBack
 			err := json.Unmarshal(event.Body, &callback)
 			if err != nil {
 				log.Error(err)
@@ -102,20 +105,29 @@ func ServerStart() {
 			callType := callback.Event.Action.Value
 			switch callType {
 			case "add":
+				// 将字符串转换为整数
+				name := form.Name
+				ex := apply_list[name]
+				if ex != nil || queryByName(name) {
+					return SendCard(NewErrCard(fmt.Errorf("%s 已经存在", name)), openID)
+				}
+				num, _ := strconv.Atoi(form.Type)
 				source := &core.RssSource{
 					Name:         form.Name,
 					Link:         form.Link,
 					Description:  form.Description,
 					Creator:      openID,
-					Public:       form.Public,
+					Public:       num,
 					CollectCount: 0,
 					CollectDate:  time.Now().Format(date_format),
 					UpdateTime:   time.Now().Format(date_format),
 				}
+				log.Debug(source)
 				//添加订阅源
-				if form.Public == 1 {
+				if source.Public == 1 {
 					//推送申请卡片
-
+					apply := NewApply(source, openID, form.Note, true)
+					apply_list[name] = apply
 					//return SendCard()
 				} else {
 					//私有的直接存入
@@ -198,7 +210,7 @@ func Do(rss *core.RssSource, t time.Time) {
 
 }
 
-type CallBack struct {
+type AddRSSCallBack struct {
 	*larkevent.EventV2Base // 事件基础数据
 	Event                  struct {
 		Operator larkim.UserId `json:"operator"`
@@ -213,6 +225,11 @@ type ActionForm struct {
 	FormValue struct {
 		core.RssSource
 		Note string `json:"note"`
+		Type string `json:"public"`
 	} `json:"form_value"`
 	Name string `json:"name"`
+}
+
+func queryByName(name string) bool {
+	return core.RssDb.HasRss(name)
 }
