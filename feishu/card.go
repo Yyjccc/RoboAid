@@ -101,8 +101,8 @@ func NewRssListCard(public, private []*core.RssSource) string {
 	card := &Card{
 		Type: "template",
 		Data: CardTemplate{
-			TemplateID:          cfg.GetTmpl("apply").ID,
-			TemplateVersionName: cfg.GetTmpl("apply").Version,
+			TemplateID:          cfg.GetTmpl("rssList").ID,
+			TemplateVersionName: cfg.GetTmpl("rssList").Version,
 			TemplateVariable:    variables,
 		},
 	}

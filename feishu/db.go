@@ -178,7 +178,7 @@ func (f *FeiShuDB) GetAllPrivateRss(id int64) ([]*PrivateRss, error) {
 // 根据id
 func (f *FeiShuDB) GetAllPrivateRssByUserID(openId string) ([]*core.RssSource, error) {
 	// 查询语句
-	query := `SELECT id, source_id, open_id, create_date FROM private_rss WHERE open_od = ?`
+	query := `SELECT id, source_id, open_id, create_date FROM private_rss WHERE open_id = ?`
 
 	// 执行查询
 	rows, err := f.Db.Query(query, openId)
