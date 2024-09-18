@@ -12,7 +12,7 @@ var fsDb *FeiShuDB
 
 // 私有RSS订阅
 type PrivateRss struct {
-	ID         string
+	ID         int64
 	SourceID   int64
 	OpenID     string
 	CreateDate string
@@ -98,7 +98,7 @@ func init() {
 }
 
 func (f *FeiShuDB) InsertSubscribeInfo(info *SubscribeInfo) error {
-	query := `INSERT INTO subscribe_info (open_id,subscribe, update_time)VALUES (?,?,?)`
+	query := `INSERT INTO subscribe_info (open_id,source_id, update_time)VALUES (?,?,?)`
 	_, err := f.Db.Exec(query, info.OpenId, info.Subscribe, info.UpdateTime.Format("2006-01-02"))
 	if err != nil {
 		log.Error(err)
@@ -191,14 +191,14 @@ func (f *FeiShuDB) GetAllPrivateRssByUserID(openId string) ([]*core.RssSource, e
 	var rssList []*PrivateRss
 	// 遍历结果集
 	for rows.Next() {
-		var rss *PrivateRss
+		var rss PrivateRss
 		err := rows.Scan(&rss.ID, &rss.SourceID, &rss.OpenID, &rss.CreateDate)
 		if err != nil {
 			log.Error("Failed to scan RSS record:", err)
 			return nil, err
 		}
 		// 添加到结果切片
-		rssList = append(rssList, rss)
+		rssList = append(rssList, &rss)
 	}
 
 	// 检查 rows 是否有任何错误
@@ -214,4 +214,21 @@ func (f *FeiShuDB) GetAllPrivateRssByUserID(openId string) ([]*core.RssSource, e
 		}
 	}
 	return ressult, nil
+}
+
+func (f *FeiShuDB) InsertPrivateRSS(rss *PrivateRss) (int64, error) {
+	query := `INSERT INTO private_rss (source_id,open_id, create_date)VALUES (?,?,?)`
+	result, err := f.Db.Exec(query, rss.SourceID, rss.OpenID, rss.CreateDate)
+	if err != nil {
+		log.Error(err)
+		return 0, err
+	}
+	// 获取插入记录的自增ID
+	id, err := result.LastInsertId()
+	if err != nil {
+		log.Error("Failed to retrieve the last insert ID:", err)
+		return 0, err
+	}
+	log.Debugf("insert private rss,id:%d", id)
+	return id, nil
 }

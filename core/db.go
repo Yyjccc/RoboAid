@@ -83,14 +83,16 @@ func (r *RssDB) InsertRssRecord(record *RssRecord) (int64, error) {
 	result, err := r.Db.Exec(query, record.SourceID, record.Description, record.Link, record.Title, record.PublishDate, record.Author)
 	if err != nil {
 		log.Error(err)
+		return 0, err
 	}
-	return 0, err
+
 	// 获取插入记录的自增ID
 	id, err := result.LastInsertId()
 	if err != nil {
 		log.Error("Failed to retrieve the last insert ID:", err)
 		return 0, err
 	}
+	log.Debugf("insert rss record,id:%d", id)
 	return id, nil
 }
 
@@ -121,14 +123,23 @@ func (r *RssDB) GetRecordBySourceID(sourceID int64) ([]*RssRecord, error) {
 	return records, nil
 }
 
-func (r *RssDB) InsertRssSource(source *RssSource) error {
+func (r *RssDB) InsertRssSource(source *RssSource) (int64, error) {
 	// 插入数据的 SQL 语句
 	query := `INSERT INTO rss_source (name , description ,link,collect_count,collect_date,update_time,public,creator)VALUES (?,?,?, ?, ?, ?, ?,?)`
-	_, err := r.Db.Exec(query, source.Name, source.Description, source.Link, source.CollectCount, source.CollectDate, source.UpdateTime, source.Public, source.Creator)
+	result, err := r.Db.Exec(query, source.Name, source.Description, source.Link, source.CollectCount, source.CollectDate, source.UpdateTime, source.Public, source.Creator)
 	if err != nil {
 		log.Error(err)
+		return 0, err
 	}
-	return err
+	// 获取插入记录的自增ID
+	id, err := result.LastInsertId()
+	if err != nil {
+		log.Error("Failed to retrieve the last insert ID:", err)
+		return 0, err
+	}
+	log.Debugf("insert rss source,id:%d", id)
+	return id, nil
+
 }
 
 func (r *RssDB) DeleteRssSource(name string) error {
@@ -170,7 +181,7 @@ func (r *RssDB) GetAllRssSource() ([]*RssSource, error) {
 }
 
 func (r *RssDB) GetRssSource(id int64) *RssSource {
-	query := `SELECT id, name, description, link,"public" collect_count, collect_date, update_time, creator  FROM rss_source where id=? LIMIT 1`
+	query := `SELECT id, name, description, link,"public", collect_count, collect_date, update_time, creator  FROM rss_source where id=? LIMIT 1`
 	rows, err := r.Db.Query(query, id)
 	if err != nil {
 		log.Error(err)

@@ -133,13 +133,28 @@ func ServerStart() {
 					return SendCard(NewApplyCard(apply), cfg.Owner)
 				} else {
 					//私有的直接存入
-					err := core.RssDb.InsertRssSource(source)
+					rssID, err := core.RssDb.InsertRssSource(source)
+					if err != nil {
+						log.Error(err)
+						return SendCard(NewTipCard("错误:"+err.Error()), openID)
+					}
+					privateRss := &PrivateRss{
+						ID:         0,
+						SourceID:   rssID,
+						OpenID:     openID,
+						CreateDate: time.Now().Format(date_format),
+					}
+					_, err = fsDb.InsertPrivateRSS(privateRss)
 					if err != nil {
 						log.Error(err)
 						return SendCard(NewTipCard("错误:"+err.Error()), openID)
 					}
 					return SendCard(NewTipCard("订阅成功"), openID)
 				}
+			case "del":
+				rssId := callback.Event.Action.Value.ApplyId
+				core.RssDb.GetRssSource()
+
 			case "pass":
 				//公共RSS申请通过
 				log.Debugf("申请等待队列：%v", apply_list)
@@ -151,11 +166,12 @@ func ServerStart() {
 				delete(apply_list, apply.Source.Name)
 				if apply.add {
 					//添加操作
-					err := core.RssDb.InsertRssSource(apply.Source)
+					id, err := core.RssDb.InsertRssSource(apply.Source)
 					if err != nil {
 						log.Error(err)
 						return SendCard(NewErrCard(fmt.Errorf("订阅错误,%s", err)), openID)
 					}
+					apply.Source.ID = id
 					//向申请者发送审核通过
 					//撤回原来的卡片
 					SendCard(NewTipCard("审核已通过,订阅成功："+apply.Source.Name), apply.UserId)
