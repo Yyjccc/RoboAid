@@ -8,13 +8,33 @@ import (
 
 var (
 	BotConfig *Config
+	BotPath   string
 )
 
 type Config struct {
-	GroupID    string `yaml:"group_id"`
-	AppId      string `yaml:"app_id"`
-	SecretKey  string `yaml:"secret_key"`
-	ServerPort int    `yaml:"webhook_port"`
+	GroupID     string      `yaml:"group_id"`
+	DbPath      string      `yaml:"db_path"`
+	AppId       string      `yaml:"app_id"`
+	SecretKey   string      `yaml:"secret_key"`
+	ServerPort  int         `yaml:"webhook_port"`
+	VerifyToken string      `yaml:"verify_token"`
+	Owner       string      `yaml:"owner"`
+	Templates   []*Template `yaml:"templates"`
+}
+
+func (c *Config) GetTmpl(name string) *Template {
+	for _, t := range c.Templates {
+		if t.Name == name {
+			return t
+		}
+	}
+	return nil
+}
+
+type Template struct {
+	Name    string `yaml:"name"`
+	ID      string `yaml:"id"`
+	Version string `yaml:"version"`
 }
 
 func init() {
@@ -32,4 +52,5 @@ func init() {
 		log.Fatalf("error decoding YAML: %v", err)
 	}
 	BotConfig = &config
+	BotPath, err = os.Getwd()
 }
