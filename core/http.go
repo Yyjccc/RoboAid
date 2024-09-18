@@ -25,23 +25,8 @@ func init() {
 
 	client := resty.New().
 		SetTransport(CreateTransport(nil, MaxIdleConns)). // 自定义 transport
-		//SetLogger(util.DefaultLogger).
+		SetLogger(DefaultLogger).
 		SetHeader("User-Agent", "golang-sdk") //.
-	// 设置请求之后的钩子，打印日志，判断状态码
-	//OnAfterResponse(
-	//	func(client *resty.Client, resp *resty.Response) error {
-	//		util.Infof("%v", RespInfo(resp))
-	//		// 执行请求后过滤器
-	//		if err := openapi.DoRespFilterChains(resp.Request.RawRequest, resp.RawResponse); err != nil {
-	//			return err
-	//		}
-	//		// 非成功含义的状态码，需要返回 error 供调用方识别
-	//		if !openapi.IsSuccessStatus(resp.StatusCode()) {
-	//			return util.New(resp.StatusCode(), string(resp.Body()))
-	//		}
-	//		return nil
-	//	},
-	//)
 	Http = &HttpApi{
 		RestyClient: client,
 	}
