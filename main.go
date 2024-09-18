@@ -1,6 +1,6 @@
 package main
 
-import "DoRssBot/feishu"
+import "RoboAid/feishu"
 
 func main() {
 	feishu.ServerStart()
