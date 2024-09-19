@@ -128,7 +128,7 @@ func ServerStart() {
 				if source.Public == 1 {
 					//推送申请卡片
 					apply := NewApply(source, openID, callback.Event.Context.OpenMessageID, form.Note, true)
-					log.Debug(apply)
+					log.Infof("generate apply: %v", apply)
 					apply_list[name] = apply
 					return SendCard(NewApplyCard(apply), cfg.Owner)
 				} else {
@@ -152,9 +152,32 @@ func ServerStart() {
 					return SendCard(NewTipCard("订阅成功"), openID)
 				}
 			case "del":
-				rssId := callback.Event.Action.Value.ApplyId
-				core.RssDb.GetRssSource()
-
+				rssId, _ := strconv.ParseInt(callback.Event.Action.Value.ApplyId, 10, 64)
+				source := core.RssDb.GetRssSource(rssId)
+				if source == nil {
+					return SendCard(NewErrCard(fmt.Errorf("数据库错误：%v", err)), openID)
+				}
+				if source.Public == 1 {
+					// 发送申请
+					apply := NewApply(source, openID, callback.Event.Context.OpenMessageID, "", false)
+					log.Infof("generate apply: %v", apply)
+					apply_list[source.Name] = apply
+					return SendCard(NewApplyCard(apply), cfg.Owner)
+				} else {
+					// 直接删除
+					log.Debugf("准备删除：%s", source.Name)
+					err := core.RssDb.DeleteRssSource(source.Name)
+					if err != nil {
+						log.Error(err)
+						return SendCard(NewErrCard(err), openID)
+					}
+					err = fsDb.DelPrivateRSS(rssId)
+					if err != nil {
+						log.Error(err)
+						return SendCard(NewErrCard(err), openID)
+					}
+					return SendCard(NewTipCard("取消订阅成功"), openID)
+				}
 			case "pass":
 				//公共RSS申请通过
 				log.Debugf("申请等待队列：%v", apply_list)
@@ -183,6 +206,7 @@ func ServerStart() {
 					if err != nil {
 						return SendCard(NewErrCard(fmt.Errorf("取消订阅错误,%s", err)), openID)
 					}
+
 					SendCard(NewTipCard("审核已通过,取消订阅成功："+apply.Source.Name), apply.UserId)
 					//向审核者发送提示
 					return SendCard(NewTipCard("审核已生效,"+apply.Source.Name), openID)

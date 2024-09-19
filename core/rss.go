@@ -16,7 +16,7 @@ const date_format = "2006-01-02"
 
 // RssSource rss订阅源
 type RssSource struct {
-	ID           int64
+	ID           int64  `json:"id"`
 	Name         string `json:"name"`
 	Link         string `json:"link"`
 	Description  string `json:"description"`

@@ -232,3 +232,13 @@ func (f *FeiShuDB) InsertPrivateRSS(rss *PrivateRss) (int64, error) {
 	log.Debugf("insert private rss,id:%d", id)
 	return id, nil
 }
+
+func (f *FeiShuDB) DelPrivateRSS(id int64) error {
+	// 删除指定 name 的 RSS 资源
+	query := `DELETE FROM private_rss WHERE source_id = ?`
+	_, err := f.Db.Exec(query, id)
+	if err != nil {
+		log.Error(err)
+	}
+	return err
+}
