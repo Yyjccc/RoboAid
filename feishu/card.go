@@ -33,6 +33,44 @@ func NewErrCard(err error) string {
 	return NewTipCard("发生错误:" + err.Error())
 }
 
+// 申请结果卡片
+func NewApplyResultCard(apply *Apply, pass bool) string {
+	source := apply.Source
+	var variables = make(map[string]interface{})
+	variables["apply_id"] = apply.Id
+	variables["user_id"] = apply.UserId
+	if pass {
+		variables["result"] = "<font color='green'>**已通过**</font>"
+	} else {
+		variables["result"] = "<font color='red'>**已拒绝**</font>"
+	}
+	variables["name"] = source.Name
+	variables["link"] = source.Link
+	variables["description"] = source.Description
+	variables["date"] = apply.Date
+	if apply.add {
+		variables["op"] = "添加"
+	} else {
+		variables["op"] = "删除"
+	}
+	variables["note"] = apply.Note
+	variables["quote_daily"] = getQuoteDaily()
+	card := &Card{
+		Type: "template",
+		Data: CardTemplate{
+			TemplateID:          cfg.GetTmpl("apply_result").ID,
+			TemplateVersionName: cfg.GetTmpl("apply_result").Version,
+			TemplateVariable:    variables,
+		},
+	}
+	data, err := json.Marshal(card)
+	if err != nil {
+		log.Error(err)
+	}
+	log.Info("创建申请卡片")
+	return string(data)
+}
+
 func NewRSSCard(source *core.RssSource, record *core.RssRecord) string {
 	var variables = make(map[string]interface{})
 	variables["title"] = record.Title

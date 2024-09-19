@@ -66,6 +66,34 @@ func SendText(content, openid string) error {
 	return err
 }
 
+// 延时更新卡片
+func UpdateCard(msgID, card string) {
+	go func(msgID, card string) {
+		time.Sleep(5 * time.Second)
+		larkim.NewPatchMessagePathReqBodyBuilder()
+		// 创建请求对象
+		req := larkim.NewPatchMessageReqBuilder().
+			MessageId(msgID).
+			Body(larkim.NewPatchMessageReqBodyBuilder().
+				Content(card).
+				Build()).
+			Build()
+		// 发起请求
+		resp, err := client.Im.V1.Message.Patch(context.Background(), req)
+
+		// 处理错误
+		if err != nil {
+			log.Errorf("update message failed, code: %v, msg: %v, log_id: %v", resp.Code, resp.Msg, resp.RequestId())
+		}
+		// 服务端错误处理
+		if !resp.Success() {
+			log.Error(resp.Code, resp.Msg, resp.RequestId())
+			log.Errorf("update message failed, code: %v, msg: %v, log_id: %v", resp.Code, resp.Msg, resp.RequestId())
+		}
+		log.Debugf("update message success, code: %v, msg: %v, log_id: %v", resp.Code, resp.Msg, resp.RequestId())
+	}(msgID, card)
+}
+
 // 上传图片
 func Upload(url string) (string, error) {
 	resp, err := http.Get(url)

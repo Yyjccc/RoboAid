@@ -21,6 +21,12 @@ const date_format = "2006-01-02"
 
 var apply_list = make(map[string]*Apply)
 
+var Service *RssService
+
+func init() {
+	Service = NewRssService()
+}
+
 func ServerStart() {
 	handler := dispatcher.NewEventDispatcher(cfg.VerifyToken, "").
 		//接收到消息的处理
@@ -36,7 +42,6 @@ func ServerStart() {
 			case "custom.bot.status":
 				return SendCard(NewTipCard("bot在线中"), openID)
 			case "custom.subscribe.status":
-				//查询用户订阅状态
 				//查询用户订阅状态
 				info := fsDb.GetSubscribeInfo(openID)
 				if info == nil {
@@ -72,22 +77,10 @@ func ServerStart() {
 				}
 				return SendCard(NewTipCard("**成功关闭**订阅"), openID)
 			case "event.rss.list":
-				//rss订阅列表
-				source, err := core.RssDb.GetAllRssSource()
+				public_list, private_list, err := Service.GetRssList(openID)
 				if err != nil {
 					return SendCard(NewErrCard(err), openID)
 				}
-				var public_list = make([]*core.RssSource, 0)
-				for _, v := range source {
-					if v.Public == 1 {
-						public_list = append(public_list, v)
-					}
-				}
-				private_list, err := fsDb.GetAllPrivateRssByUserID(openID)
-				if err != nil {
-					return SendCard(NewErrCard(err), openID)
-				}
-				log.Infof("public RSS count: %d;private RSS count:%d", len(public_list), len(private_list))
 				return SendCard(NewRssListCard(public_list, private_list), openID)
 			case "event.rss.add":
 				return SendCard(NewRssAddCard(), openID)
@@ -165,7 +158,7 @@ func ServerStart() {
 					return SendCard(NewApplyCard(apply), cfg.Owner)
 				} else {
 					// 直接删除
-					log.Debugf("准备删除：%s", source.Name)
+					log.Debugf("prepare del ：%s", source.Name)
 					err := core.RssDb.DeleteRssSource(source.Name)
 					if err != nil {
 						log.Error(err)
@@ -176,7 +169,13 @@ func ServerStart() {
 						log.Error(err)
 						return SendCard(NewErrCard(err), openID)
 					}
-					return SendCard(NewTipCard("取消订阅成功"), openID)
+					//更新卡片
+					msgID := callback.Event.Context.OpenMessageID
+					public_list, private_list, err := Service.GetRssList(openID)
+					if err != nil {
+						UpdateCard(msgID, NewRssListCard(public_list, private_list))
+					}
+					return SendCard(NewTipCard("取消订阅成功,name:"+source.Name), openID)
 				}
 			case "pass":
 				//公共RSS申请通过
@@ -199,6 +198,8 @@ func ServerStart() {
 					//撤回原来的卡片
 					SendCard(NewTipCard("审核已通过,订阅成功："+apply.Source.Name), apply.UserId)
 					//向审核者发送提示
+					//更新审核卡片
+					UpdateCard(callback.Event.Context.OpenMessageID, NewApplyResultCard(apply, true))
 					return SendCard(NewTipCard("审核已生效,"+apply.Source.Name), openID)
 				} else {
 					//删除操作
@@ -206,9 +207,16 @@ func ServerStart() {
 					if err != nil {
 						return SendCard(NewErrCard(fmt.Errorf("取消订阅错误,%s", err)), openID)
 					}
-
+					//更新原来的卡片
+					msgID := apply.SrcCardId
+					public_list, private_list, err := Service.GetRssList(apply.UserId)
+					if err != nil {
+						UpdateCard(msgID, NewRssListCard(public_list, private_list))
+					}
 					SendCard(NewTipCard("审核已通过,取消订阅成功："+apply.Source.Name), apply.UserId)
 					//向审核者发送提示
+					//更新审核卡片
+					UpdateCard(callback.Event.Context.OpenMessageID, NewApplyResultCard(apply, true))
 					return SendCard(NewTipCard("审核已生效,"+apply.Source.Name), openID)
 				}
 			case "reject":
@@ -218,6 +226,8 @@ func ServerStart() {
 				}
 				//剔除等待队列
 				delete(apply_list, apply.Source.Name)
+				//更新审核卡片
+				UpdateCard(callback.Event.Context.OpenMessageID, NewApplyResultCard(apply, false))
 				return SendCard(NewTipCard("审核未通过！name:"+apply.Source.Name), apply.UserId)
 			}
 			return nil
@@ -238,6 +248,27 @@ type RssService struct {
 	MainTask *core.ScheduledTask
 }
 
+func (r *RssService) GetRssList(openID string) ([]*core.RssSource, []*core.RssSource, error) {
+	//rss订阅列表
+	var public_list = make([]*core.RssSource, 0)
+	var private_list = make([]*core.RssSource, 0)
+	source, err := core.RssDb.GetAllRssSource()
+	if err != nil {
+		return public_list, private_list, err
+	}
+	for _, v := range source {
+		if v.Public == 1 {
+			public_list = append(public_list, v)
+		}
+	}
+	private_list, err = fsDb.GetAllPrivateRssByUserID(openID)
+	if err != nil {
+		return public_list, private_list, err
+	}
+	log.Infof("public RSS count: %d;private RSS count:%d", len(public_list), len(private_list))
+	return public_list, private_list, nil
+}
+
 func NewRssService() *RssService {
 	taskFunc := func() {
 		source, err := core.RssDb.GetAllRssSource()
@@ -249,13 +280,12 @@ func NewRssService() *RssService {
 			go Do(rssSource, time.Now())
 		}
 	}
-
+	log.Infof("start service, trigger on 8:00")
 	service := &RssService{
 		MainTask: core.NewScheduledTask("RssService", 8, 0, taskFunc),
 	}
 	service.MainTask.Start()
 	return service
-
 }
 
 func Do(rss *core.RssSource, t time.Time) {
