@@ -165,6 +165,7 @@ func ServerStart() {
 						return SendCard(NewErrCard(err), openID)
 					}
 					err = fsDb.DelPrivateRSS(rssId)
+
 					if err != nil {
 						log.Error(err)
 						return SendCard(NewErrCard(err), openID)
@@ -172,7 +173,7 @@ func ServerStart() {
 					//更新卡片
 					msgID := callback.Event.Context.OpenMessageID
 					public_list, private_list, err := Service.GetRssList(openID)
-					if err != nil {
+					if err == nil {
 						UpdateCard(msgID, NewRssListCard(public_list, private_list))
 					}
 					return SendCard(NewTipCard("取消订阅成功,name:"+source.Name), openID)
@@ -210,7 +211,8 @@ func ServerStart() {
 					//更新原来的卡片
 					msgID := apply.SrcCardId
 					public_list, private_list, err := Service.GetRssList(apply.UserId)
-					if err != nil {
+					if err == nil {
+						log.Infof("src card id:%s", msgID)
 						UpdateCard(msgID, NewRssListCard(public_list, private_list))
 					}
 					SendCard(NewTipCard("审核已通过,取消订阅成功："+apply.Source.Name), apply.UserId)
@@ -229,6 +231,9 @@ func ServerStart() {
 				//更新审核卡片
 				UpdateCard(callback.Event.Context.OpenMessageID, NewApplyResultCard(apply, false))
 				return SendCard(NewTipCard("审核未通过！name:"+apply.Source.Name), apply.UserId)
+			case "cancel":
+				//取消，撤回卡片
+				return ReCallMessage(callback.Event.Context.OpenMessageID)
 			}
 			return nil
 		})

@@ -111,12 +111,15 @@ type ScheduledTask struct {
 }
 
 // 创建新的定时任务
-// 创建新的定时任务
 func NewScheduledTask(name string, targetHour int, targetMinute int, taskFunc func()) *ScheduledTask {
 	// 计算今天的目标时间
 	now := time.Now()
 	targetTime := time.Date(now.Year(), now.Month(), now.Day(), targetHour, targetMinute, 0, 0, now.Location())
 
+	// 如果目标时间已经过去，设置为明天的这个时间
+	if targetTime.Before(now) {
+		targetTime = targetTime.Add(24 * time.Hour)
+	}
 	return &ScheduledTask{
 		TargetTime:  targetTime,
 		TaskFunc:    taskFunc,

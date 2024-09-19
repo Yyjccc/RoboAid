@@ -66,10 +66,27 @@ func SendText(content, openid string) error {
 	return err
 }
 
+// 撤回消息
+func ReCallMessage(msgId string) error {
+	req := larkim.NewDeleteMessageReqBuilder().MessageId(msgId).Build()
+	resp, err := client.Im.Message.Delete(ctx, req)
+	if !resp.Success() {
+		err := fmt.Errorf("client.Im.Message.Delete failed, code: %d, msg: %s, log_id: %s", resp.Code, resp.Msg, resp.RequestId())
+		log.Error(err.Error())
+		return err
+	}
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Debugf("recall success, code: %d, msg: %s, log_id: %s", resp.Code, resp.Msg, resp.RequestId())
+	return nil
+}
+
 // 延时更新卡片
 func UpdateCard(msgID, card string) {
 	go func(msgID, card string) {
-		time.Sleep(5 * time.Second)
+		time.Sleep(2 * time.Second)
 		larkim.NewPatchMessagePathReqBodyBuilder()
 		// 创建请求对象
 		req := larkim.NewPatchMessageReqBuilder().

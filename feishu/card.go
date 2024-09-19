@@ -30,7 +30,23 @@ func NewTipCard(content string) string {
 
 // 错误提示
 func NewErrCard(err error) string {
-	return NewTipCard("发生错误:" + err.Error())
+	var variables = make(map[string]interface{})
+	variables["content"] = "发生错误：**" + err.Error() + "**"
+	variables["quote_daily"] = getQuoteDaily()
+	card := &Card{
+		Type: "template",
+		Data: CardTemplate{
+			TemplateID:          cfg.GetTmpl("warn").ID,
+			TemplateVersionName: cfg.GetTmpl("warn").Version,
+			TemplateVariable:    variables,
+		},
+	}
+	data, err := json.Marshal(card)
+	if err != nil {
+		log.Error(err)
+	}
+	log.Infof("创建警告卡片:%s", err.Error())
+	return string(data)
 }
 
 // 申请结果卡片

@@ -98,7 +98,7 @@ func init() {
 }
 
 func (f *FeiShuDB) InsertSubscribeInfo(info *SubscribeInfo) error {
-	query := `INSERT INTO subscribe_info (open_id,source_id, update_time)VALUES (?,?,?)`
+	query := `INSERT INTO subscribe_info (open_id,subscribe, update_time)VALUES (?,?,?)`
 	_, err := f.Db.Exec(query, info.OpenId, info.Subscribe, info.UpdateTime.Format("2006-01-02"))
 	if err != nil {
 		log.Error(err)
